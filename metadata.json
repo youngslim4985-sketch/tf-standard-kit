@@ -1,0 +1,6 @@
+{
+  "name": "T&F DevStandard Portal",
+  "description": "The interactive white-label developer governance portal and scaffold generator for T&F Standard Kit.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
