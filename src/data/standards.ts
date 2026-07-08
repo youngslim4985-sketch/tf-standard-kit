@@ -156,6 +156,63 @@ export const STARTER_APPS = [
 
 export const STANDARD_TEMPLATES: DocumentTemplate[] = [
   {
+    filename: "README.md",
+    title: "System Overview & Getting Started Guide",
+    description: "Main landing page introducing the repository, setup commands, and architecture rules.",
+    rawTemplate: `# {{PROJECT_NAME}}
+
+> **A professional engineering solution by {{BRAND_NAME}}**  
+> *{{BRAND_MOTTO}}*  
+> Active Compliance Profile: \`{{PROFILE_NAME}}\`
+
+---
+
+## 1. Executive Overview & Context
+**{{PROJECT_NAME}}** is engineered to satisfy strict design principles in the **{{VERTICAL}}** domain. It aligns with corporate guidelines ensuring zero-exposure configuration structures, predictable state controllers, and fully bounded public surfaces.
+
+## 2. Port & Host Ingress Setup
+This applet is designed to bind cleanly to **Port \`3000\`** and host \`0.0.0.0\` under modern container standard orchestration.
+
+To run the local development server:
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
+
+## 3. Governance & Pipeline Verification
+To protect codebase maturity from feature or policy drift:
+* **Architecture Rules**: Full schematics are mapped directly in \`ARCHITECTURE.md\`.
+* **Security Matrix**: Detailed cryptographic boundaries and PII policies are listed in \`SECURITY.md\`.
+* **Commit Guidelines**: Review policies and contribution standards are detailed in \`CONTRIBUTING.md\`.
+* **CI Standards Checker**: Code changes are evaluated by \`./scripts/validate-standards.sh\` before pull-request merges.`,
+  },
+  {
+    filename: "ROADMAP.md",
+    title: "Product Execution & Architecture Roadmap",
+    description: "Tracks active implementation milestones, compliance targets, and scaling limits.",
+    rawTemplate: `# SYSTEM ROADMAP: {{PROJECT_NAME}}
+
+> **GOVERNANCE FRAMEWORK**: Guided by the **{{BRAND_NAME}}** Product Roadmap Office.
+> **ACTIVE PROFILE**: \`{{PROFILE_NAME}}\`
+
+---
+
+## Phase 1: Bootstrap & Basic Ingress (Completed)
+- [x] Configure standard container ingress binding to Port \`3000\`.
+- [x] Establish secure environment secrets isolation.
+- [x] Populate the T&F DevStandard documentation kit (\`README.md\`, \`ARCHITECTURE.md\`).
+
+## Phase 2: Enterprise Security Hardening (In Progress)
+- [ ] Establish asynchronous read-replica DB failover.
+- [ ] Implement tenant Row-Level database security isolation.
+- [ ] Connect non-repudiation audit trails.
+
+## Phase 3: High-Availability & Global Delivery
+- [ ] Connect CDN-edge caching configurations.
+- [ ] Implement vector similarity semantic memory caches.
+- [ ] Configure dynamic prompt injection pre-filters.`,
+  },
+  {
     filename: "ARCHITECTURE.md",
     title: "System Architecture Blueprint",
     description: "Defines components, data flows, failure modes, and security controls.",

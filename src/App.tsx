@@ -5,7 +5,7 @@ import BrandConfigEditor from "./components/BrandConfigEditor";
 import DiagramSetViewer from "./components/DiagramSetViewer";
 import DocumentViewer from "./components/DocumentViewer";
 import AIScaffolder from "./components/AIScaffolder";
-import { FolderOpen, FileCheck, CheckCircle2, GitBranch, Shield, Cpu, RefreshCw, LayoutGrid, HelpCircle, FileText } from "lucide-react";
+import { FolderOpen, FileCheck, CheckCircle2, GitBranch, Shield, Cpu, RefreshCw, LayoutGrid, HelpCircle, FileText, Download } from "lucide-react";
 
 export default function App() {
   const [brand, setBrand] = useState<BrandConfig>(DEFAULT_BRAND);
@@ -30,7 +30,7 @@ export default function App() {
   };
 
   const [documents, setDocuments] = useState<{ [key: string]: string }>(getInitialDocs());
-  const [activeFilename, setActiveFilename] = useState<string>("ARCHITECTURE.md");
+  const [activeFilename, setActiveFilename] = useState<string>("README.md");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
   // Sync complete scaffold updates
@@ -43,11 +43,11 @@ export default function App() {
     setActiveProfile(profile);
     setProjectName(inputs.projectName);
     
-    // Auto-focus the file targets list if it has the current file, otherwise focus ARCHITECTURE.md
+    // Auto-focus the file targets list if it has the current file, otherwise focus README.md
     if (docs[activeFilename]) {
       // keep active
     } else {
-      setActiveFilename("ARCHITECTURE.md");
+      setActiveFilename("README.md");
     }
   };
 
@@ -71,10 +71,132 @@ export default function App() {
     handleBrandChange(DEFAULT_BRAND);
   };
 
+  const handleDownloadFullKit = () => {
+    const brandYaml = getMockFileContent("config/brand.yml");
+    const profilesYaml = getMockFileContent("config/profiles.yml");
+    const validateSh = getMockFileContent("scripts/validate-standards.sh");
+
+    // Assemble the complete installer script
+    const shellScript = `#!/usr/bin/env bash
+# ==============================================================================
+# ${brand.name} DevStandard - Repository Bootstrapper & Scaffolder
+# Generated on: ${new Date().toISOString()}
+# Motto: ${brand.motto}
+# Domain: ${brand.website}
+# ==============================================================================
+
+set -euo pipefail
+
+TARGET_DIR="tf-standard-kit"
+PROJECT_NAME="${projectName}"
+PROFILE_ID="${activeProfile.id}"
+
+echo "=== [${brand.name} DevStandard Scaffolder] ==="
+echo "Bootstrapping standard repository tree..."
+
+# Create directory structures
+mkdir -p "$TARGET_DIR/config"
+mkdir -p "$TARGET_DIR/templates"
+mkdir -p "$TARGET_DIR/diagrams"
+mkdir -p "$TARGET_DIR/scripts"
+mkdir -p "$TARGET_DIR/.github/workflows"
+
+# 1. Create brand config
+cat << 'EOF' > "$TARGET_DIR/config/brand.yml"
+${brandYaml}
+EOF
+
+# 2. Create profiles ruleset
+cat << 'EOF' > "$TARGET_DIR/config/profiles.yml"
+${profilesYaml}
+EOF
+
+# 3. Create validator script
+cat << 'EOF' > "$TARGET_DIR/scripts/validate-standard.sh"
+${validateSh}
+EOF
+chmod +x "$TARGET_DIR/scripts/validate-standard.sh"
+
+# 4. Create standard templates
+cat << 'EOF' > "$TARGET_DIR/templates/README.md"
+${documents["README.md"] || ""}
+EOF
+
+cat << 'EOF' > "$TARGET_DIR/templates/ROADMAP.md"
+${documents["ROADMAP.md"] || ""}
+EOF
+
+cat << 'EOF' > "$TARGET_DIR/templates/ARCHITECTURE.md"
+${documents["ARCHITECTURE.md"] || ""}
+EOF
+
+cat << 'EOF' > "$TARGET_DIR/templates/CONTRIBUTING.md"
+${documents["CONTRIBUTING.md"] || ""}
+EOF
+
+cat << 'EOF' > "$TARGET_DIR/templates/SECURITY.md"
+${documents["SECURITY.md"] || ""}
+EOF
+
+# 5. Create root mock README
+cat << 'EOF' > "$TARGET_DIR/README.md"
+# ${projectName} - Repository Standards Kit
+
+This repository is built and validated under the **${brand.name}** DevStandard automation.
+
+## Structure
+* \`config/brand.yml\`: Master branding parameters
+* \`config/profiles.yml\`: Active standards compliance profile rules
+* \`templates/\`: Markdown system templates
+* \`scripts/validate-standard.sh\`: Codebase enforcement gates
+EOF
+
+# 6. Create Github Actions Workflow stub
+cat << 'EOF' > "$TARGET_DIR/.github/workflows/standards-check.yml"
+name: Standards Compliance Gate
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Check DevStandard Compliance
+        run: |
+          chmod +x ./scripts/validate-standard.sh
+          ./scripts/validate-standard.sh --profile ${activeProfile.id}
+EOF
+
+echo "---"
+echo "✅ Standards Kit scaffolded successfully inside '$TARGET_DIR/'!"
+echo "To run validation locally, execute:"
+echo "  cd $TARGET_DIR && ./scripts/validate-standard.sh"
+echo "=============================================================================="
+`;
+
+    const blob = new Blob([shellScript], { type: "text/x-shellscript;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `scaffold-${projectName}-standards.sh`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Mock repository file structure
   const repoFiles = [
     { name: "config/brand.yml", type: "config", label: "Brand Meta Config" },
     { name: "config/profiles.yml", type: "config", label: "Profile Ruleset" },
+    { name: "README.md", type: "doc", label: "Landing Overview" },
+    { name: "ROADMAP.md", type: "doc", label: "Product Milestones" },
     { name: "ARCHITECTURE.md", type: "doc", label: "System Blueprint" },
     { name: "CONTRIBUTING.md", type: "doc", label: "Governance Guide" },
     { name: "SECURITY.md", type: "doc", label: "Security Boundary Matrix" },
@@ -122,35 +244,127 @@ profiles:
 
     if (name === "scripts/validate-standards.sh") {
       return `#!/usr/bin/env bash
-# ${brand.name} DevStandard Repository Gatekeeper
-# Validates compliance matrix before commits / deployment
+# ==============================================================================
+# ${brand.name} DevStandard - Codebase Gatekeeper
+# Validates repository against compliance standards of: ${activeProfile.name}
+# ==============================================================================
 
-echo "--- [${brand.name} DevStandard Engine] ---"
-echo "Target Repo: ${projectName}"
-echo "Active Profile: ${activeProfile.id}"
+set -eo pipefail
 
-# Scan ARCHITECTURE.md for keywords
-if [ ! -f "ARCHITECTURE.md" ]; then
-  echo "[CRITICAL ERROR] Missing mandatory ARCHITECTURE.md file!"
-  exit 1
+echo "======================================================================"
+echo "      🔍 STARTING ${brand.name} DEVSTANDARD GATEKEEPER COMPLIANCE SCAN"
+echo "======================================================================"
+echo "Target Project: ${projectName}"
+echo "Active Profile: ${activeProfile.id} (${activeProfile.name})"
+echo "---"
+
+errors=0
+
+# Helper function to check mandatory files
+check_file() {
+  local filepath="$1"
+  local description="$2"
+  if [ -f "$filepath" ]; then
+    echo "  [PASS] File exists: $filepath ($description)"
+  else
+    echo "  [FAIL] Missing file: $filepath ($description)"
+    errors=$((errors + 1))
+  fi
+}
+
+# 1. Structural checks
+echo "Step 1: Validating core files..."
+check_file "README.md" "Main system landing page"
+check_file "ARCHITECTURE.md" "Architecture and core components mapping"
+check_file "ROADMAP.md" "Future milestones and active plans"
+check_file "SECURITY.md" "Transport, transport layers and PII details"
+check_file "CONTRIBUTING.md" "SLA guidelines and standards boundaries"
+check_file "config/brand.yml" "Configuration of brand meta properties"
+check_file "config/profiles.yml" "Compliance profile rulesets"
+
+# 2. CI/CD Gating checks
+echo ""
+echo "Step 2: Checking CI workflow pipelines..."
+if [ -f ".github/workflows/standards-check.yml" ]; then
+  echo "  [PASS] CI standards pipeline exists"
+else
+  echo "  [WARN] Missing standards-check.yml workflow. Continuous validation disabled!"
 fi
 
-echo "Scanning compliance markers..."
-checks_passed=0
+# 3. Deep Profile Compliance checks
+echo ""
+echo "Step 3: Checking deep content parameters for '${activeProfile.id}'..."
 
 case "${activeProfile.id}" in
   "saas-product")
-    grep -qi "jwt" ARCHITECTURE.md && echo "[PASS] JWT check" || echo "[FAIL] Missing JWT details"
+    if grep -qi -E "jwt|token|ingress" ARCHITECTURE.md; then
+      echo "  [PASS] Token boundaries explicitly described inside ARCHITECTURE.md"
+    else
+      echo "  [FAIL] Missing security: JWT / Ingress boundaries are undocumented in ARCHITECTURE.md"
+      errors=$((errors + 1))
+    fi
+    
+    if grep -qi -E "replica|sync|backup" ARCHITECTURE.md; then
+      echo "  [PASS] Replication / Storage layout described inside ARCHITECTURE.md"
+    else
+      echo "  [FAIL] Missing architecture: Read replicas or active storage fallbacks are undocumented in ARCHITECTURE.md"
+      errors=$((errors + 1))
+    fi
     ;;
+
   "ai-infrastructure")
-    grep -qi "fallback" ARCHITECTURE.md && echo "[PASS] Fallback routing check" || echo "[FAIL] Missing Fallback details"
+    if grep -qi -E "fallback|router|alternative" ARCHITECTURE.md; then
+      echo "  [PASS] Secondary model router failover plans listed"
+    else
+      echo "  [FAIL] Missing failure mode: Fallback providers / model routes are undocumented in ARCHITECTURE.md"
+      errors=$((errors + 1))
+    fi
+
+    if grep -qi -E "injection|moderation|guardrail" ARCHITECTURE.md; then
+      echo "  [PASS] Inbound prompt safety filters mapped"
+    else
+      echo "  [FAIL] Missing security: Prompt injection controls are undocumented in ARCHITECTURE.md"
+      errors=$((errors + 1))
+    fi
     ;;
+
   "security")
-    grep -qi "worm" ARCHITECTURE.md && echo "[PASS] WORM audit log check" || echo "[FAIL] Missing WORM audit details"
+    if grep -qi -E "separat|row-level|tenant" ARCHITECTURE.md; then
+      echo "  [PASS] Tenant logical row-level partition filters documented"
+    else
+      echo "  [FAIL] Missing security: Tenant isolation rules are undocumented in ARCHITECTURE.md"
+      errors=$((errors + 1))
+    fi
+
+    if grep -qi -E "worm|audit" ARCHITECTURE.md; then
+      echo "  [PASS] Secure write-once logging structures mapped"
+    else
+      echo "  [FAIL] Missing security: WORM audit logging is undocumented in ARCHITECTURE.md"
+      errors=$((errors + 1))
+    fi
+    ;;
+
+  "minimal")
+    if grep -qi -E "stateless|backup" ARCHITECTURE.md; then
+      echo "  [PASS] Basic MVP compliance rules described"
+    else
+      echo "  [FAIL] Missing architecture: Stateless container lifecycles are undocumented in ARCHITECTURE.md"
+      errors=$((errors + 1))
+    fi
     ;;
 esac
 
-echo "Validation completed successfully!"`;
+echo ""
+echo "======================================================================"
+if [ $errors -eq 0 ]; then
+  echo "  ✅ REPOSITORY MET ALL ACTIVE GOVERNANCE REQUIREMENTS SUCCESSFULLY!"
+  echo "======================================================================"
+  exit 0
+else
+  echo "  ❌ FAILURE: $errors compliance checks failed. Correct errors before merging."
+  echo "======================================================================"
+  exit 1
+fi`;
     }
 
     // Default return template docs
@@ -222,14 +436,24 @@ echo "Validation completed successfully!"`;
         <div className="xl:col-span-8 space-y-6">
           {/* Interactive Workspace / Repo Explorer */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl" id="workspace-explorer">
-            <div className="flex items-center justify-between mb-5 border-b border-slate-800 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <FolderOpen className="w-4 h-4 text-rose-500" style={{ color: brand.accentColor }} />
                 <span className="text-sm font-sans font-semibold text-white tracking-tight">
                   Scaffold Repository Tree: <span className="font-mono text-xs text-rose-400" style={{ color: brand.accentColor }}>/{projectName}</span>
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-slate-500">Active Profile: {activeProfile.id}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-mono text-slate-500 hidden md:inline">Active Profile: {activeProfile.id}</span>
+                <button
+                  onClick={handleDownloadFullKit}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white font-sans flex items-center gap-2 shadow hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+                  style={{ backgroundColor: brand.accentColor }}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download Kit (.sh)
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
