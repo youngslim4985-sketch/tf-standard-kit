@@ -1,4 +1,4 @@
-T&F Standard Kit
+T&F Command Center 
 
 Documentation and architecture standard for the T&F software ecosystem.
 
