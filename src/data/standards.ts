@@ -82,8 +82,14 @@ export const STANDARD_PROFILES: ArchitectureProfile[] = [
     name: "Enterprise Security & Compliance Profile",
     tagline: "High-security banking, health (HIPAA), or PCI-DSS services",
     description: "Strict profile for regulated systems. Requires multi-tenant DB isolation, field-level encryption, physical HSM keys, immutable audit trails, and strict PII access boundaries.",
-    fileTargets: ["ARCHITECTURE.md", "CONTRIBUTING.md", "SECURITY.md", "COMPLIANCE.md"],
+    fileTargets: ["ARCHITECTURE.md", "CONTRIBUTING.md", "SECURITY.md", "docs/ztna.md"],
     requirements: [
+      {
+        id: "sec-ztna",
+        title: "Zero Trust Network Ingress (ZTNA)",
+        description: "Enforce continuous Policy Decision Point (PDP) checks, device posture signals, risk score evaluation, and session token revocation.",
+        category: "Security",
+      },
       {
         id: "sec-isolation",
         title: "Logical Tenant Separation",
@@ -107,6 +113,12 @@ export const STANDARD_PROFILES: ArchitectureProfile[] = [
         title: "Zero-Knowledge Storage Failures",
         description: "System must fail-closed on credentials loss; no raw text recovery pathways.",
         category: "Failure Mode",
+      },
+      {
+        id: "sec-event-bus",
+        title: "ZTNA Typed Event Catalog",
+        description: "All posture, risk, and session revocation events must emit strictly formatted event envelopes with correlation IDs.",
+        category: "Architecture",
       },
     ],
   },
@@ -139,6 +151,12 @@ export const STARTER_APPS = [
     vertical: "AI Medical Front Desk / Booking Agent",
     profileId: "ai-infrastructure",
     description: "An autonomous AI phone agent for medical offices. Integrates with AthenaHealth EHR for appointment booking, processes copays via Stripe, handles patient queries over real-time TTS, and enforces strict HIPAA trust boundaries.",
+  },
+  {
+    projectName: "t-f-soc-ztna",
+    vertical: "T-F-SOC / ZTNA Gatekeeper & Security Hub",
+    profileId: "security",
+    description: "Zero Trust Network Access (ZTNA) gatekeeper module for T-F-SOC. Evaluates real-time device posture signals, calculates contextual risk scores, enforces policy decisions, manages session lifecycles, and publishes cryptographically signed event envelopes.",
   },
   {
     projectName: "governance-core",
@@ -350,5 +368,211 @@ Please do not open GitHub issues for security vulnerabilities. Instead, submit s
 - **Email**: security@{{BRAND_WEBSITE}}
 - **Response window**: The security team will acknowledge receipt within 24 hours and provide an initial impact assessment within 72 hours.
 - **Bounty Program**: Elite, confirmed vulnerabilities are eligible for the **{{BRAND_NAME}}** White-Label Bug Bounty program.`,
+  },
+  {
+    filename: "docs/ztna.md",
+    title: "Zero Trust Network Access (ZTNA) Module Specification",
+    description: "Canonical ZTNA architecture, schema definitions, event catalog, and Build Agent integration checklist.",
+    rawTemplate: `# ZTNA MODULE SPECIFICATION & ARCHITECTURE: {{PROJECT_NAME}}
+
+> **GOVERNANCE FRAMEWORK**: {{BRAND_NAME}} Security Operations Center (T-F-SOC / DevStandard)  
+> **ACTIVE COMPLIANCE PROFILE**: \`{{PROFILE_NAME}}\`  
+> **TARGET PROJECT**: \`{{PROJECT_NAME}}\` (\`{{VERTICAL}}\`)  
+
+---
+
+## 1. ZTNA Module Overview & Architecture
+The Zero Trust Network Access (ZTNA) module enforces continuous identity, posture, and contextual risk evaluation before granting network or API access to resources within **{{PROJECT_NAME}}**.
+
+Under the **{{BRAND_NAME}}** DevStandard model:
+* **Policy Enforcement Point (PEP)** sits at the Ingress Proxy / Gateway.
+* **Policy Decision Point (PDP)** evaluates real-time posture signals and contextual risk vectors.
+* **Master_Hub Placement**: Acts as the central coordinator for session issuance, global policy distribution, and canonical session revocation (\`ztna.session.revoked\`).
+
+---
+
+## 2. Component Ownership & Event Flow
+\`\`\`mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Client Device / Agent
+    participant PEP as Ingress Proxy (PEP)
+    participant Hub as Master_Hub (PDP)
+    participant EDR as Posture / Risk Provider
+    participant Bus as Event Bus
+
+    Client->>PEP: Ingress Access Request
+    PEP->>Hub: Evaluate Policy (AccessRequest)
+    Hub->>EDR: Fetch Device Posture & Risk Score
+    EDR-->>Hub: PostureSignal & RiskSignal
+    Hub->>Hub: Calculate PolicyDecision
+    alt Decision PERMIT
+        Hub-->>PEP: PolicyDecision (PERMIT, SessionToken, TTL)
+        Hub->>Bus: Publish ztna.session.started
+        PEP-->>Client: Grant Ingress Access
+    else Decision DENY
+        Hub-->>PEP: PolicyDecision (DENY, explanation_codes)
+        Hub->>Bus: Publish ztna.access_request.evaluated (DENIED)
+        PEP-->>Client: 403 Forbidden + Explanation
+    end
+
+    note over Hub,Bus: On Risk Threshold Breach or Manual Trigger
+    Hub->>Bus: Publish ztna.session.revoked (Canonical Producer: Master_Hub)
+    Bus->>PEP: Terminate Active Session Token
+\`\`\`
+
+---
+
+## 3. Standard JSON Schemas
+
+### 3.1 Device Posture Signal Schema
+\`\`\`json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["device_id", "os_version", "disk_encryption", "edr_active", "compliance_score"],
+  "properties": {
+    "device_id": { "type": "string", "example": "dev-corp-mac-8821" },
+    "os_version": { "type": "string", "example": "macOS 14.5.0" },
+    "disk_encryption": { "type": "boolean", "example": true },
+    "edr_active": { "type": "boolean", "example": true },
+    "compliance_score": { "type": "number", "minimum": 0, "maximum": 100, "example": 98.5 }
+  }
+}
+\`\`\`
+
+### 3.2 Risk Signal Schema
+\`\`\`json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["risk_score", "anomaly_type", "ip_address", "location"],
+  "properties": {
+    "risk_score": { "type": "number", "minimum": 0, "maximum": 1, "example": 0.12 },
+    "anomaly_type": { "type": "string", "enum": ["NONE", "IMPOSSIBLE_TRAVEL", "UNUSUAL_PORT", "CREDENTIAL_STUFFING"] },
+    "ip_address": { "type": "string", "format": "ipv4", "example": "198.51.100.45" },
+    "location": { "type": "string", "example": "US-EAST-1" }
+  }
+}
+\`\`\`
+
+### 3.3 Policy Decision Response Schema
+\`\`\`json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["decision_id", "effect", "explanation_codes", "ttl_seconds"],
+  "properties": {
+    "decision_id": { "type": "string", "example": "dec-9912048" },
+    "effect": { "type": "string", "enum": ["PERMIT", "DENY", "CHALLENGE_MFA"] },
+    "explanation_codes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "example": ["ERR_POSTURE_EDR_MISSING", "ERR_RISK_HIGH_GEO_ANOMALY"]
+    },
+    "ttl_seconds": { "type": "integer", "example": 3600 },
+    "session_token": { "type": "string", "example": "ztna_sess_ey2819..." }
+  }
+}
+\`\`\`
+
+### 3.4 Canonical Event Envelope Schema
+\`\`\`json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["event_id", "event_type", "correlation_id", "tenant_id", "timestamp", "producer", "data"],
+  "properties": {
+    "event_id": { "type": "string", "example": "evt-771239-abc" },
+    "event_type": { "type": "string", "example": "ztna.session.revoked" },
+    "correlation_id": { "type": "string", "example": "corr-req-88123" },
+    "tenant_id": { "type": "string", "example": "tenant-tf-holdings" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "example": "Master_Hub" },
+    "data": { "type": "object" }
+  }
+}
+\`\`\`
+
+---
+
+## 4. Typed Event Catalog
+All microservices emit and subscribe to these canonical events:
+
+| Event Type | Canonical Producer | Trigger Condition |
+| :--- | :--- | :--- |
+| \`ztna.access_request.evaluated\` | Master_Hub (PDP) | Evaluated an ingress access request |
+| \`ztna.posture_signal.received\` | Posture Collector Agent | New device posture payload received |
+| \`ztna.risk_signal.received\` | Threat Engine | Threat score update calculated |
+| \`ztna.session.started\` | Master_Hub | New ZTNA session granted |
+| \`ztna.session.revoked\` | Master_Hub | Session forcibly terminated due to risk breach |
+
+---
+
+## 5. ZTNA Session & Policy API Endpoints
+
+### 5.1 Start Session: \`POST /api/v1/ztna/sessions/start\`
+* **Request**:
+  \`\`\`json
+  {
+    "principal_id": "usr_alpha_99",
+    "device_id": "dev-corp-mac-8821",
+    "resource_target": "api.{{BRAND_WEBSITE}}/v1/ledger"
+  }
+  \`\`\`
+* **Response (200 OK)**:
+  \`\`\`json
+  {
+    "status": "ACTIVE",
+    "session_id": "ztna_sess_9912048",
+    "expires_at": "2026-07-26T00:00:00Z",
+    "posture_hash": "sha256-a81f99..."
+  }
+  \`\`\`
+
+### 5.2 Revoke Session: \`POST /api/v1/ztna/sessions/revoke\`
+* **Request**:
+  \`\`\`json
+  {
+    "session_id": "ztna_sess_9912048",
+    "reason": "HIGH_RISK_ANOMALY_BREACH"
+  }
+  \`\`\`
+* **Response (200 OK)**:
+  \`\`\`json
+  {
+    "revoked": true,
+    "timestamp": "2026-07-25T17:15:00Z",
+    "event_published": "ztna.session.revoked"
+  }
+  \`\`\`
+
+---
+
+## 6. Build Agent Checklist & Handoff Roadmap
+
+### Done
+- [x] ZTNA module overview and architecture defined.
+- [x] Component ownership boundaries defined.
+- [x] Master_Hub placement established.
+- [x] Device posture signal schema drafted and refined.
+- [x] Risk signal schema drafted and refined.
+- [x] Access request schema drafted and refined.
+- [x] Policy decision response schema drafted and refined.
+- [x] Session object schema drafted and refined.
+- [x] Event envelope schema drafted and refined.
+- [x] Typed event catalog defined.
+- [x] Event bus routing defined.
+- [x] GitHub-ready \`docs/ztna.md\` content drafted.
+- [x] Architecture README section drafted and merged.
+
+### To Do (Build Agent Execution)
+- [ ] Finalize canonical producer ownership for \`ztna.session.revoked\` (Locked to Master_Hub).
+- [ ] Enforce mandatory \`explanation_codes\` on all DENY decisions.
+- [ ] Enforce \`correlation_id\` and \`tenant_id\` validation on all event envelopes.
+- [ ] Define typed payload validation strategy for event \`data\`.
+- [ ] Wire ZTNA session API routes (\`/sessions/start\`, \`/sessions/revoke\`).
+- [ ] Implement policy management schemas for \`/policies\` and \`/exceptions\`.
+- [ ] Map ZTNA controls into Deployment Gate integration points.`,
   },
 ];

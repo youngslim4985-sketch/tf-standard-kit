@@ -8,7 +8,7 @@ interface DiagramSetViewerProps {
   projectName: string;
 }
 
-type DiagramTab = "data-flow" | "trust-boundaries" | "failover";
+type DiagramTab = "data-flow" | "trust-boundaries" | "failover" | "ztna-flow";
 
 export default function DiagramSetViewer({ brand, profile, projectName }: DiagramSetViewerProps) {
   const [activeTab, setActiveTab] = useState<DiagramTab>("data-flow");
@@ -288,6 +288,94 @@ export default function DiagramSetViewer({ brand, profile, projectName }: Diagra
     );
   };
 
+  const renderZtnaFlow = () => {
+    return (
+      <div className="w-full h-[360px] bg-slate-950/80 rounded-xl border border-slate-800 p-5 flex flex-col justify-between">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-500" style={{ color: accentHex }} />
+              <h4 className="text-xs font-sans font-semibold text-white">Zero Trust Gatekeeper & Master_Hub PDP</h4>
+            </div>
+            <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20" style={{ color: accentHex }}>
+              T-F-SOC Enforcer
+            </span>
+          </div>
+
+          {/* 4 Interactive Flow Nodes */}
+          <div className="grid grid-cols-4 gap-2.5 my-2">
+            <button
+              onClick={() => setSelectedNode("ztna-pep")}
+              className={`p-2.5 rounded-lg border text-left transition-all ${
+                selectedNode === "ztna-pep" ? "bg-slate-900 border-slate-700 shadow-md scale-102" : "bg-slate-950/60 border-slate-900 hover:border-slate-800"
+              }`}
+              style={{ borderColor: selectedNode === "ztna-pep" ? accentHex : "" }}
+            >
+              <span className="text-[9px] font-mono font-bold text-rose-400 uppercase block mb-1">01. PEP</span>
+              <p className="text-[11px] font-sans font-semibold text-slate-200 leading-snug">Ingress PEP Proxy</p>
+              <p className="text-[8px] font-mono text-slate-500 mt-1">Intersects HTTP/gRPC</p>
+            </button>
+
+            <button
+              onClick={() => setSelectedNode("ztna-pdp")}
+              className={`p-2.5 rounded-lg border text-left transition-all ${
+                selectedNode === "ztna-pdp" ? "bg-slate-900 border-slate-700 shadow-md scale-102" : "bg-slate-950/60 border-slate-900 hover:border-slate-800"
+              }`}
+              style={{ borderColor: selectedNode === "ztna-pdp" ? accentHex : "" }}
+            >
+              <span className="text-[9px] font-mono font-bold text-sky-400 uppercase block mb-1">02. PDP</span>
+              <p className="text-[11px] font-sans font-semibold text-slate-200 leading-snug">Master_Hub PDP</p>
+              <p className="text-[8px] font-mono text-slate-500 mt-1">Policy Evaluator</p>
+            </button>
+
+            <button
+              onClick={() => setSelectedNode("ztna-signals")}
+              className={`p-2.5 rounded-lg border text-left transition-all ${
+                selectedNode === "ztna-signals" ? "bg-slate-900 border-slate-700 shadow-md scale-102" : "bg-slate-950/60 border-slate-900 hover:border-slate-800"
+              }`}
+              style={{ borderColor: selectedNode === "ztna-signals" ? accentHex : "" }}
+            >
+              <span className="text-[9px] font-mono font-bold text-amber-400 uppercase block mb-1">03. Signals</span>
+              <p className="text-[11px] font-sans font-semibold text-slate-200 leading-snug">Posture & Risk</p>
+              <p className="text-[8px] font-mono text-slate-500 mt-1">EDR + Anomaly Score</p>
+            </button>
+
+            <button
+              onClick={() => setSelectedNode("ztna-eventbus")}
+              className={`p-2.5 rounded-lg border text-left transition-all ${
+                selectedNode === "ztna-eventbus" ? "bg-slate-900 border-slate-700 shadow-md scale-102" : "bg-slate-950/60 border-slate-900 hover:border-slate-800"
+              }`}
+              style={{ borderColor: selectedNode === "ztna-eventbus" ? accentHex : "" }}
+            >
+              <span className="text-[9px] font-mono font-bold text-emerald-400 uppercase block mb-1">04. Event Bus</span>
+              <p className="text-[11px] font-sans font-semibold text-slate-200 leading-snug">Session Revocation</p>
+              <p className="text-[8px] font-mono text-slate-500 mt-1">Canonical Revoke Event</p>
+            </button>
+          </div>
+
+          <div className="bg-slate-900/80 rounded-lg p-3 border border-slate-800 text-[11px] font-mono text-slate-300 space-y-1">
+            <div className="flex justify-between items-center text-slate-400">
+              <span>Canonical Revocation Event:</span>
+              <span className="text-rose-400 font-bold">ztna.session.revoked</span>
+            </div>
+            <div className="flex justify-between items-center text-slate-400">
+              <span>Canonical Event Producer:</span>
+              <span className="text-sky-400 font-semibold">Master_Hub</span>
+            </div>
+            <div className="flex justify-between items-center text-slate-400">
+              <span>Policy Response Effect:</span>
+              <span className="text-emerald-400 font-semibold">PERMIT / DENY (with explanation_codes)</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-[10px] text-slate-500 text-center font-mono border-t border-slate-900/60 pt-2">
+          Strict ZTNA compliance requires correlation_id and tenant_id on all emitted event envelopes.
+        </div>
+      </div>
+    );
+  };
+
   const getNodeDetails = () => {
     switch (selectedNode) {
       case "client":
@@ -326,6 +414,30 @@ export default function DiagramSetViewer({ brand, profile, projectName }: Diagra
           desc: "High-end LLM proxy routing inference requests to Gemini, monitoring token limits, and handling fallback to alternative models.",
           complianceRule: "Rule AI-02: Token count budget tracks RPM/TPM dynamically. Prompt injection guardrails pre-filter strings.",
         };
+      case "ztna-pep":
+        return {
+          title: "Policy Enforcement Point (PEP)",
+          desc: "Intersects all ingress API traffic. Blocks unauthenticated payloads and enforces Master_Hub policy decision tokens.",
+          complianceRule: "Rule ZTNA-PEP-01: PEP must reject requests missing valid ZTNA session tokens with 403 Forbidden.",
+        };
+      case "ztna-pdp":
+        return {
+          title: "Master_Hub Policy Decision Point (PDP)",
+          desc: "Central decision engine that combines identity, device posture, and risk scores to compute PERMIT/DENY responses with explanation codes.",
+          complianceRule: "Rule ZTNA-PDP-01: Master_Hub is the sole authority for ztna.session.revoked and ztna.access_request.evaluated.",
+        };
+      case "ztna-signals":
+        return {
+          title: "Posture & Risk Signal Collectors",
+          desc: "Collects continuous EDR device compliance scores (0-100) and contextual risk signals (e.g. impossible travel, credential stuffing).",
+          complianceRule: "Rule ZTNA-SIG-01: Posture signals with compliance scores under 80 automatically downgrade session TTL.",
+        };
+      case "ztna-eventbus":
+        return {
+          title: "Canonical ZTNA Event Bus",
+          desc: "Event broker publishing signed event envelopes containing correlation_id, tenant_id, timestamp, producer, and typed data payloads.",
+          complianceRule: "Rule ZTNA-EVT-01: All events must use canonical schemas. ztna.session.revoked must be processed within 50ms across all edge PEP nodes.",
+        };
       default:
         return {
           title: "Select an architectural component",
@@ -350,7 +462,7 @@ export default function DiagramSetViewer({ brand, profile, projectName }: Diagra
           </div>
         </div>
 
-        <div className="flex gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800/80">
+        <div className="flex flex-wrap gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800/80">
           <button
             onClick={() => setActiveTab("data-flow")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
@@ -373,7 +485,16 @@ export default function DiagramSetViewer({ brand, profile, projectName }: Diagra
               activeTab === "failover" ? "bg-slate-900 text-white border border-slate-800" : "text-slate-400 hover:text-white"
             }`}
           >
-            Failover Mitigation
+            Failover
+          </button>
+          <button
+            onClick={() => setActiveTab("ztna-flow")}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+              activeTab === "ztna-flow" ? "bg-slate-900 text-rose-400 border border-slate-800 font-semibold" : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <ShieldAlert className="w-3 h-3 text-rose-400" />
+            ZTNA Gatekeeper
           </button>
         </div>
       </div>
@@ -383,6 +504,7 @@ export default function DiagramSetViewer({ brand, profile, projectName }: Diagra
           {activeTab === "data-flow" && renderDataFlowDiagram()}
           {activeTab === "trust-boundaries" && renderTrustBoundaries()}
           {activeTab === "failover" && renderFailover()}
+          {activeTab === "ztna-flow" && renderZtnaFlow()}
         </div>
 
         <div className="bg-slate-950 rounded-xl border border-slate-800 p-5 flex flex-col justify-between">

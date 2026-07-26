@@ -138,6 +138,11 @@ cat << 'EOF' > "$TARGET_DIR/templates/SECURITY.md"
 ${documents["SECURITY.md"] || ""}
 EOF
 
+mkdir -p "$TARGET_DIR/templates/docs"
+cat << 'EOF' > "$TARGET_DIR/templates/docs/ztna.md"
+${documents["docs/ztna.md"] || ""}
+EOF
+
 # 5. Create root mock README
 cat << 'EOF' > "$TARGET_DIR/README.md"
 # ${projectName} - Repository Standards Kit
@@ -147,7 +152,7 @@ This repository is built and validated under the **${brand.name}** DevStandard a
 ## Structure
 * \`config/brand.yml\`: Master branding parameters
 * \`config/profiles.yml\`: Active standards compliance profile rules
-* \`templates/\`: Markdown system templates
+* \`templates/\`: Markdown system templates & ZTNA module specs
 * \`scripts/validate-standard.sh\`: Codebase enforcement gates
 EOF
 
@@ -200,6 +205,7 @@ echo "==========================================================================
     { name: "ARCHITECTURE.md", type: "doc", label: "System Blueprint" },
     { name: "CONTRIBUTING.md", type: "doc", label: "Governance Guide" },
     { name: "SECURITY.md", type: "doc", label: "Security Boundary Matrix" },
+    { name: "docs/ztna.md", type: "doc", label: "ZTNA Gatekeeper Spec" },
     { name: "scripts/validate-standards.sh", type: "script", label: "Local CI Validator" },
   ];
 
@@ -340,6 +346,13 @@ case "${activeProfile.id}" in
       echo "  [PASS] Secure write-once logging structures mapped"
     else
       echo "  [FAIL] Missing security: WORM audit logging is undocumented in ARCHITECTURE.md"
+      errors=$((errors + 1))
+    fi
+
+    if [ -f "docs/ztna.md" ] || grep -qi "ztna" ARCHITECTURE.md; then
+      echo "  [PASS] ZTNA Zero Trust module spec & posture schemas validated"
+    else
+      echo "  [FAIL] Missing security: ZTNA Zero Trust specification (docs/ztna.md) missing"
       errors=$((errors + 1))
     fi
     ;;
